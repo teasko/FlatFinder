@@ -1,0 +1,4 @@
+*testt*
+resources/
+__pycache__/
+.env
