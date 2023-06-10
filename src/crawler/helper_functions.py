@@ -14,3 +14,19 @@ def prettify_list_of_flats(flats: List[dict])-> str:
         # print info >> will be send as email
         return pretty_string
 
+def rows2dict(rows):
+    res = []
+    for row in rows:
+        d = {}
+        for column in row.__table__.columns:
+            d[column.name] = str(getattr(row, column.name))
+
+    res.append(d)
+    return res
+
+def row2dict(row):
+    d = {}
+    for column in row.__table__.columns:
+        d[column.name] = str(getattr(row, column.name))
+
+    return d

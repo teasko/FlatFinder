@@ -1,24 +1,19 @@
 from datetime import datetime as _datetime
-#import json as _json
-#import random as _random
-#import requests as _requests
-#import time as _time
+import requests
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+from typing import List
+import json
+
 import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup as _BeautifulSoup
-from typing import List
 import re
 import crawler.db_handler as db
 
-def scrape_interesting_flats_for_user(user_id:int) -> List[dict]:
-    flatFilters = db.get_userFlatFilters(user_id)
-   # possible sleep to have less consistent query intervals
-    #_time.sleep(_random.randint(0, 60))
-    # get info of relevant flats
-    return _collect_relevant_flats_with_info(flatFilters)
 
 def scrape_new_flats_for_user(user_id:int) -> List[dict]:
-    interesting_flats = scrape_interesting_flats_for_user(user_id=user_id)
+    interesting_flats = _scrape_interesting_flats_for_user(user_id=user_id)
     known_flat_ids = db.get_known_flat_ids(user_id=user_id)
     newFlats = []
     interesting_flat_ids=[]
@@ -30,8 +25,18 @@ def scrape_new_flats_for_user(user_id:int) -> List[dict]:
                 newFlats.append(flat)
     
     db.replace_known_flats(user_id,interesting_flat_ids)
+    _filter_flats_by_location(newFlats,path_polygons)
+
 
     return newFlats
+
+
+def _scrape_interesting_flats_for_user(user_id:int) -> List[dict]:
+    flatFilters = db.get_userFlatFilters(user_id)
+   # possible sleep to have less consistent query intervals
+    #_time.sleep(_random.randint(0, 60))
+    # get info of relevant flats
+    return _collect_relevant_flats_with_info(flatFilters)
 
 
 def _collect_relevant_flats_with_info(flatFilters:db.UserFlatFilters) -> List[dict]:
@@ -100,8 +105,6 @@ def _extract_price_from_header(header:str)->float:
         return header_list[euro_index-1]
 
 
-
-
 def _flat_satisfies_filters(flat_info:dict, flatFilters:db.UserFlatFilters) -> bool:
     
     all_satisfied = True
@@ -136,8 +139,71 @@ def _flat_satisfies_filters(flat_info:dict, flatFilters:db.UserFlatFilters) -> b
     return all_satisfied
 
 
-
-
-
-
+def _getCoordinatesFromAddress(address:str) -> Point:
+    base_url =   "https://nominatim.openstreetmap.org/search?q="
+    address_url = address.replace(",","+")
+    request_url = base_url + address_url + "&format=json"
     
+    r = requests.get(request_url)
+    if r.status_code == 200:
+        r = r.json()
+        if len(r) > 0:
+            entry = -1
+            for i in range(len(r)):
+                if ("type" in r[i].keys()) and ("lat" in r[i].keys()) and ("lon" in r[i].keys()):
+                    if (len(r[i]["lat"])>0) and (len(r[i]["lon"])>0):
+                        if (r[i]["type"] == "house") or (entry < 0):
+                            entry=i
+                            break
+
+            if entry >=0:
+                return Point(float(r[entry]["lon"]),float(r[entry]["lat"]))
+            else:
+                raise ValueError("no lat/lon values for address")
+        else:
+            raise ValueError("address not found")
+    else:
+        raise ConnectionError(r.reason)
+
+
+
+def _createPolygons(file_path:str) -> List[Polygon]:
+    with open(file_path, 'r') as f:
+        geojason = json.load(f)
+    
+    polygon_list = []
+    for feature in geojason["features"]:
+        if feature["geometry"]['type'] == "Polygon":
+            for polygon in feature["geometry"]['coordinates']:
+                polygon_list.append(Polygon(polygon))
+
+
+    return polygon_list
+
+
+def _checkCoordinatesInPolygons(polygons:List[Polygon], coordinates: Point) -> bool:
+    is_contained = False
+    for polygon in polygons:
+        if polygon.contains(coordinates):
+            is_contained = True
+            break
+    return is_contained
+
+
+def _checkAddressInPolygons(address:str,polygon_path)->bool:
+    coords = _getCoordinatesFromAddress(address)
+    polygons = _createPolygons(polygon_path)
+    return _checkCoordinatesInPolygons(polygons,coords)
+
+
+def _filter_flats_by_location(flats:List[dict],path_polygons) -> List[dict]:
+    res = []
+    for flat in flats:
+        if 'Adresse' in flat.keys():
+            addr = flat['Adresse']
+            try:
+                if _checkAddressInPolygons(addr,path_polygons):
+                    res.append(flat)
+            except:
+                pass
+    return res
