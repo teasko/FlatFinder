@@ -1,13 +1,6 @@
 import json
 
-from dotenv import load_dotenv
-
 import db_handler as db
-
-# from flat_finder import scrape_new_flats_for_user
-# from helper_functions import row2dict
-
-load_dotenv()
 
 if __name__ == "__main__":
     db.create_base()
@@ -107,7 +100,7 @@ if __name__ == "__main__":
     try:
         with open(path_to_geo, "r") as f:
             geojason = json.load(f)
-            db.set_polygon(user_id, geojason)
+            db.set_polygons(user_id, geojason)
     except Exception as e:
         print("Error occured: ")
         print(e)

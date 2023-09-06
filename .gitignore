@@ -2,3 +2,5 @@
 resources/
 __pycache__/
 .env
+OLD/
+*ToDo*

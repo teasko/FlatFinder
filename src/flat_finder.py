@@ -27,7 +27,7 @@ def scrape_new_flats_for_user(user_id: int) -> List[dict]:
                 newFlats.append(flat)
 
     db.replace_known_flat_ids(user_id, interesting_flat_ids)
-    polygons = db.get_polygon(user_id)
+    polygons = db.get_polygons(user_id)
     newFlats = _filter_flats_by_location(newFlats, polygons)
 
     return newFlats
