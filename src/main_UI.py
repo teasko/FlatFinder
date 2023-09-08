@@ -104,7 +104,7 @@ if __name__ == "__main__":
             for feature in geojson["features"]:
                 if feature["geometry"]["type"] == "Polygon":
                     for polygon in feature["geometry"]["coordinates"]:
-                        polygon.append(polygon)
+                        polygons.append(polygon)
             db.set_polygons(user_id=user_id, polygons=polygons)
     except Exception as e:
         print("Error occured: ")
