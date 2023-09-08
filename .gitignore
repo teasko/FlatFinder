@@ -4,3 +4,6 @@ __pycache__/
 .env
 OLD/
 *ToDo*
+venv/
+geojsons/
+scripts/
