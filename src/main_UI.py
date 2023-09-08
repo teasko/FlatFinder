@@ -5,7 +5,7 @@ import db_handler as db
 if __name__ == "__main__":
     db.create_base()
 
-    # user details
+    # user detailsls
 
     print()
     print("##### Input User details for new user #####")
@@ -99,8 +99,13 @@ if __name__ == "__main__":
     path_to_geo = input("enter full path to geojson: ")
     try:
         with open(path_to_geo, "r") as f:
-            geojason = json.load(f)
-            db.set_polygons(user_id, geojason)
+            geojson = json.load(f)
+            polygons = []
+            for feature in geojson["features"]:
+                if feature["geometry"]["type"] == "Polygon":
+                    for polygon in feature["geometry"]["coordinates"]:
+                        polygon.append(polygon)
+            db.set_polygons(user_id=user_id, polygons=polygons)
     except Exception as e:
         print("Error occured: ")
         print(e)
